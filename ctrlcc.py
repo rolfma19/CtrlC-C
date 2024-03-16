@@ -97,11 +97,29 @@ def show_message_box(title, message):
     return windll.user32.MessageBoxW(0, message, title, 0)
 
 
+def toggle_strip_blankspace():
+    """Toggle whether to remove blank space from copied text."""
+    global is_strip_blankspace
+    is_strip_blankspace = not is_strip_blankspace
+    return is_strip_blankspace
+
+
 def strip_newlines(text):
     """Remove all types of newline characters from a string."""
     try:
         text = text.replace('\r\n', ' ').replace('\n', ' ').replace('\r', ' ')
-        logging.info(f"Copied text: {text}")  # Log the copied text
+        logging.info(f"removed newlines: {text}")  # Log the stripped text
+        return text
+    except Exception as e:
+        logging.error(f"Error while accessing clipboard: {e}")
+        return ""
+
+
+def strip_blankspace(text):
+    """Remove all types of blank space characters from a string."""
+    try:
+        text = text.replace(' ', '')
+        logging.info(f"removed blank space: {text}")  # Log the stripped text
         return text
     except Exception as e:
         logging.error(f"Error while accessing clipboard: {e}")
@@ -125,18 +143,18 @@ def set_clipboard_text(text):
 
 
 def on_c_press(event):
-    global strip_newlines_attempted
+    global strip_attempted
     """Start a timer after first 'C' press, if 'Ctrl' is held down"""
     if keyboard.is_pressed('ctrl'):
         if hasattr(on_c_press, 'first_press_timer') and on_c_press.first_press_timer is not None:
-            # If timer exists, we are within 0.5 seconds of first press, so we execute the action
+            # If timer exists, we are within 1.0 seconds of first press, so we execute the action
             on_c_press.first_press_timer.cancel()
-            strip_newlines_attempted = True
+            strip_attempted = True
             perform_clipboard_action()
-            Timer(0.1, check_conflict).start()
+            Timer(0.5, check_conflict).start()
         else:
-            # Start a timer that waits for another 'C' press within 0.5 seconds
-            on_c_press.first_press_timer = Timer(0.5, reset_first_press_timer)
+            # Start a timer that waits for another 'C' press within 1.0 seconds
+            on_c_press.first_press_timer = Timer(1.0, reset_first_press_timer)
             on_c_press.first_press_timer.start()
     else:
         reset_first_press_timer()
@@ -144,26 +162,27 @@ def on_c_press(event):
 
 def check_conflict():
     """Check if strip_newlines was attempted but not executed, indicating a hotkey conflict."""
-    global strip_newlines_attempted, strip_newlines_executed
-    if strip_newlines_attempted and not strip_newlines_executed:
+    global strip_attempted, strip_executed
+    if strip_attempted and not strip_executed:
         # If strip_newlines was attempted but not executed, then we might have a conflict
         show_message_box("快捷键冲突", "Ctrl+C+C 快捷键可能被其他程序占用。")
     # Reset flags for the next attempt
-    strip_newlines_attempted = False
-    strip_newlines_executed = False
+    strip_attempted = False
+    strip_executed = False
 
 
 def perform_clipboard_action():
     """Perform the action of copying the clipboard text and removing newlines."""
-    global strip_newlines_executed
+    global strip_executed
     reset_first_press_timer()
     try:
         current_data = get_clipboard_text()
         stripped_text = strip_newlines(current_data)
-        if stripped_text != current_data:
-            set_clipboard_text(stripped_text)
-            logging.info("Newlines removed from clipboard text.")
-            strip_newlines_executed = True
+        if is_strip_blankspace:
+            stripped_text = strip_blankspace(stripped_text)
+        set_clipboard_text(stripped_text)
+        logging.info(f"Stripped text: {stripped_text}")
+        strip_executed = True
     except Exception as e:
         logging.error(f"Error in perform_clipboard_action: {e}")
 
@@ -192,6 +211,8 @@ def setup_tray_icon():
 
     # The menu that will appear when the user right-clicks the icon
     menu = (item('Toggle Start on Boot', toggle_startup, checked=lambda item: is_in_startup()),
+            item('Toggle Strip Blank Space', toggle_strip_blankspace,
+                 checked=lambda item: is_strip_blankspace),
             item('View Logs', view_logs),
             item('Exit', exit_program),)
     icon = pystray.Icon("test_icon", icon_image, "CtrlC+C", menu)
@@ -211,8 +232,10 @@ if __name__ == "__main__":
     logging.basicConfig(filename=log_filepath, level=logging.INFO,
                         format='%(asctime)s - %(levelname)s - %(message)s')
 
-    strip_newlines_attempted = False
-    strip_newlines_executed = False
+    strip_attempted = False
+    strip_executed = False
+
+    is_strip_blankspace = True
 
     mutex_name = "CtrlC_C_Application_Mutex"
 
