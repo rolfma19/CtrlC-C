@@ -235,7 +235,7 @@ if __name__ == "__main__":
     strip_attempted = False
     strip_executed = False
 
-    is_strip_blankspace = True
+    is_strip_blankspace = False
 
     mutex_name = "CtrlC_C_Application_Mutex"
 
