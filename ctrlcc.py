@@ -210,7 +210,8 @@ def setup_tray_icon():
     icon_image = create_icon("ctrlcc.ico")
 
     # The menu that will appear when the user right-clicks the icon
-    menu = (item('Toggle Start on Boot', toggle_startup, checked=lambda item: is_in_startup()),
+    menu = (
+            item('Toggle Start Silently on Boot', toggle_startup, checked=lambda item: is_in_startup()),
             item('Toggle Strip Blank Space', toggle_strip_blankspace,
                  checked=lambda item: is_strip_blankspace),
             item('View Logs', view_logs),
@@ -246,15 +247,16 @@ if __name__ == "__main__":
         show_message_box("应用程序已运行", "CtrlC+C 应用程序已经在运行了。")
         sys.exit(0)
 
-    # Show instruction message box
-    instruction_message = (
-        "欢迎使用 CtrlC+C ！\n"
-        "\n"
-        "【按住 Ctrl 键并按 C 键两次】以复制文本并删除换行。\n"
-        "\n"
-        "如有问题，请联系：chenluda01@gmail.com"
-    )
-    show_message_box("© 2023 Glenn.", instruction_message)
+    if not is_in_startup():
+        # Show instruction message box
+        instruction_message = (
+            "欢迎使用 CtrlC+C ！\n"
+            "\n"
+            "【按住 Ctrl 键并按 C 键两次】以复制文本并删除换行。\n"
+            "\n"
+            "如有问题，请联系：rolfma@163.com"
+        )
+        show_message_box("© 2023 Rolf Ma.", instruction_message)
 
     # Initialization and event hooks
     # print("Hold Ctrl and press C twice to copy text and remove newlines...")
